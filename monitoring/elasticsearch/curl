@@ -1,0 +1,19 @@
+# Запрос чтобы выгрузить логи
+
+curl -u "USER:PASSWORD" -X GET "https://<URL>:9200/<index>/_search" \
+  -H 'Content-Type: application/json' \
+  --insecure \
+  -d '{
+    "size": 500,
+    "sort": [
+      { "@timestamp": { "order": "desc" } }
+    ],
+    "query": {
+      "range": {
+        "@timestamp": {
+          "gte": "2025-08-07T05:00:00.000Z", # date
+          "lte": "2025-08-07T07:00:00.000Z"  # date
+        }
+      }
+    }
+  }'
