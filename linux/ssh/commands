@@ -1,0 +1,8 @@
+# Туннель для подлючения к серверу через терминальный сервер
+ssh -L 6443:127.0.0.1:6443 -J user@ip_terminal user@user 'while true; do date; sleep 5; done'
+
+# Туннель через один сервер, можно сделать прокси сервером для остальных серверов в этой подсети
+ ssh -N -g -L 0.0.0.0:3129:ip_proxy:3128 user@terminal
+export http_proxy=http://ip#где был открыть туннель:3129
+export https_proxy=http://ip#где был открыть туннель:3129
+  
