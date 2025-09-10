@@ -1,0 +1,10 @@
+Host 192.168.2.* #Адрес подлючаемого сервера
+        ProxyJump 192.168.1.1 #Адрес терминалного сервера
+
+Host kubernetes #
+    HostName #
+    User #
+    LocalForward 6443 127.0.0.1:6443
+    RemoteCommand while true; do date; sleep 5; done
+
+
