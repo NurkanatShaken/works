@@ -1,0 +1,121 @@
+---
+- name: Copy rpm tar file
+  copy:
+    src: tar-1.35-7.el10.x86_64.rpm
+    dest: /tmp
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: install tar
+  dnf:
+    name: /tmp/tar-1.35-7.el10.x86_64.rpm
+    state: present
+
+- name: Extract java
+  unarchive:
+    src: java-8.tar.gz
+    dest: /tmp
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Find all RPM files in /tmp
+  find:
+    paths: /tmp
+    patterns: "*.rpm"
+  register: rpm_files
+
+- name: Install all RPM packages
+  dnf:
+    name: "{{ item.path }}"
+    state: present
+    disable_gpg_check: yes
+  loop: "{{ rpm_files.files }}"
+
+- name: Copy nexus files
+  copy:
+    src: "nexus-{{ nexus_version }}-linux-x86_64.tar.gz"
+    dest: /tmp/nexus.tar.gz
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create a directory if it does not exist
+  file:
+    path: "{{ nexus_directory }}"
+    state: directory
+    mode: "0755"
+
+- name: Create nexus user
+  user:
+    name: "{{ nexus_username }}"
+    password: '!'
+    system: true
+    shell: /usr/sbin/nologin
+
+- name: Extract nexus files
+  unarchive:
+    src: /tmp/nexus.tar.gz
+    dest: "{{ nexus_directory }}"
+    remote_src: yes
+    extra_opts: [--transform, 's/^nexus-{{ nexus_version }}/nexus/']
+
+- name: Fix ownership for nexus
+  file:
+    path: "{{ nexus_directory }}"
+    state: directory
+    recurse: yes
+    owner: nexus
+    group: nexus
+
+- name: Copy systemd file
+  template:
+    src: nexus.service.j2
+    dest: /etc/systemd/system/nexus.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Start nexus service
+  systemd:
+    name: nexus.service
+    state: started
+    enabled: yes
+
+- name: Remove all rpm and gz files from /tmp
+  find:
+    paths: /tmp
+    patterns:
+      - "*.rpm"
+      - "*.gz"
+      - "java-8"
+    file_type: any
+  register: tmp_files
+
+- name: Delete found files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ tmp_files.files }}"
+  when: tmp_files.matched > 0
+
+- name: Wait for Nexus admin password file
+  wait_for:
+    path: "{{ nexus_directory }}/sonatype-work/nexus3/admin.password"
+    state: present
+    timeout: 60      
+    sleep: 5      
+
+- name: Read Nexus admin password
+  slurp:
+    src: "{{ nexus_directory }}/sonatype-work/nexus3/admin.password"
+  register: nexus_password_file
+    
+- name: Show Nexus admin password
+  debug:
+    msg: "{{ nexus_password_file.content | b64decode }}"
