@@ -1,0 +1,16 @@
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
+kubectl edit -n kubernetes-dashboard service kubernetes-dashboard-kong-proxy # ClusterIP меняем на NodePort (быстрое решение)
+kubectl get service -n kubernetes-dashboard kubernetes-dashboard-kong-proxy # Смотрим присвоенный $port и проверяем доступ https://ip:$port
+
+# Создаем токен с правами админа
+kubectl create serviceaccount dashboard-admin-sa -n kubernetes-dashboard
+kubectl create clusterrolebinding dashboard-admin-sa \
+  --clusterrole=cluster-admin \
+  --serviceaccount=kubernetes-dashboard:dashboard-admin-sa
+kubectl -n kubernetes-dashboard create token dashboard-admin-sa # Проверяем доступ и сохраняем токен
+
+# Создаем токен только для просмотра
+kubectl create serviceaccount view -n kubernetes-dashboard
+kubectl create clusterrolebinding view   --clusterrole=view   --serviceaccount=kubernetes-dashboard:view
+kubectl -n kubernetes-dashboard create token view # Также проверяем и сохраняем токен
