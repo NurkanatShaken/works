@@ -3,14 +3,81 @@ helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dash
 kubectl edit -n kubernetes-dashboard service kubernetes-dashboard-kong-proxy # ClusterIP меняем на NodePort (быстрое решение)
 kubectl get service -n kubernetes-dashboard kubernetes-dashboard-kong-proxy # Смотрим присвоенный $port и проверяем доступ https://ip:$port
 
-# Создаем токен с правами админа
+# Создаем ВРЕМЕННЫЙ токен с правами админа
 kubectl create serviceaccount dashboard-admin-sa -n kubernetes-dashboard
 kubectl create clusterrolebinding dashboard-admin-sa \
   --clusterrole=cluster-admin \
   --serviceaccount=kubernetes-dashboard:dashboard-admin-sa
 kubectl -n kubernetes-dashboard create token dashboard-admin-sa # Проверяем доступ и сохраняем токен
 
-# Создаем токен только для просмотра
+# Создаем ВРЕМЕННЫЙ токен только для просмотра
 kubectl create serviceaccount view -n kubernetes-dashboard
 kubectl create clusterrolebinding view   --clusterrole=view   --serviceaccount=kubernetes-dashboard:view
 kubectl -n kubernetes-dashboard create token view # Также проверяем и сохраняем токен
+
+# Создание постоянного токена с правами админа
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin
+  namespace: kubernetes-dashboard
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin-token
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/service-account.name: admin
+type: kubernetes.io/service-account-token
+
+kubectl apply -f admin-dashboard-token.yaml
+kubectl get secret admin-token -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 --decode
+
+# Создание постоянного токена с правами только просмотра
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: view
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: view-dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: view
+  namespace: kubernetes-dashboard
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: view-token
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/service-account.name: view
+type: kubernetes.io/service-account-token
+
+
+kubectl apply -f view-dashboard-token.yaml
+kubectl get secret view-token -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 --decode
+
