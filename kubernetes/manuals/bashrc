@@ -1,0 +1,14 @@
+echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> ~/.bashrc
+echo 'export KUBECONFIG=/etc/rancher/rke2/rke2.yaml' >> ~/.bashrc
+
+source ~/.bashrc
+
+echo 'alias k=kubectl' >> ~/.bashrc
+echo 'complete -o default -F __start_kubectl k' >> ~/.bashrc
+echo 'alias c="crictl --crypt-config /var/lib/rancher/rke2/agent/etc/crictl.yaml"' >> ~/.bashrc
+
+
+echo 'source <(helm completion bash)' >> ~/.bashrc
+echo 'alias h=helm' >> ~/.bashrc
+echo 'complete -o default -F __start_helm h' >> ~/.bashrc
+source ~/.bashrc
